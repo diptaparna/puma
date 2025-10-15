@@ -73,6 +73,7 @@ class Roc(PlotLineObject):
         sig_eff: np.ndarray,
         bkg_rej: np.ndarray,
         n_test: int | None = None,
+        n_test_weighted: float | None = None,
         rej_class: str | Label = None,
         signal_class: str | None = None,
         key: str | None = None,
@@ -89,6 +90,9 @@ class Roc(PlotLineObject):
             Array of background rejection
         n_test : int
             Number of events used to calculate the background efficiencies,
+            by default None
+        n_test_weighted : float, optional
+            Sum of weights of events used to calculate the background efficiencies,
             by default None
         signal_class : str
             Signal class, e.g. for b-tagging "bjets", by default None
@@ -116,6 +120,7 @@ class Roc(PlotLineObject):
         self.sig_eff = sig_eff
         self.bkg_rej = bkg_rej
         self.n_test = None if n_test is None else int(n_test)
+        self.n_test_weighted = n_test_weighted
         self.signal_class = signal_class
         self.rej_class = Flavours[rej_class] if isinstance(rej_class, str) else rej_class
         self.key = key
@@ -145,6 +150,8 @@ class Roc(PlotLineObject):
         """
         if n_test is None:
             n_test = self.n_test
+        if self.n_test_weighted is not None:
+            n_test = self.n_test_weighted
         if n_test is None:
             raise ValueError("No `n_test` provided, cannot calculate binomial error!")
         return calculate_rejection_error(self.bkg_rej[self.non_zero_mask], n_test, norm=norm)
@@ -240,6 +247,7 @@ class Roc(PlotLineObject):
             "sig_eff": self.sig_eff,
             "bkg_rej": self.bkg_rej,
             "n_test": self.n_test,
+            "n_test_weighted": self.n_test_weighted,
             "rej_class": self.rej_class,
             "signal_class": self.signal_class,
             "key": self.key,

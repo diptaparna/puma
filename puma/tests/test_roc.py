@@ -96,6 +96,29 @@ class RocTestCase(unittest.TestCase):
         roc_curve = Roc(np.array([0.1, 0.2, 0.3]), np.array([20, 50, 100]))
         np.testing.assert_array_almost_equal(roc_curve.binomial_error(n_test=100), error_rej)
 
+    def test_binomial_error_weighted(self):
+        """Test roc binomial_error function with weighted n_test."""
+        error_rej = np.array([8.717798, 35.0, 99.498744])
+        # n_test_weighted is used
+        roc_curve = Roc(
+            np.array([0.1, 0.2, 0.3]),
+            np.array([20, 50, 100]),
+            n_test_weighted=100,
+        )
+        np.testing.assert_array_almost_equal(roc_curve.binomial_error(), error_rej)
+        # n_test_weighted has precedence over n_test
+        roc_curve_2 = Roc(
+            np.array([0.1, 0.2, 0.3]),
+            np.array([20, 50, 100]),
+            n_test=200,
+            n_test_weighted=100,
+        )
+        np.testing.assert_array_almost_equal(roc_curve_2.binomial_error(), error_rej)
+        # n_test_weighted has precedence over n_test argument in function
+        np.testing.assert_array_almost_equal(
+            roc_curve_2.binomial_error(n_test=200), error_rej
+        )
+
 
 class RocMaskTestCase(unittest.TestCase):
     """Test class for the puma.roc non_zero_mask function."""
