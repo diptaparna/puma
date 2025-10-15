@@ -83,6 +83,28 @@ class VarVsEffTestCase(unittest.TestCase):
                 disc_cut=0.5,
             )
 
+    def test_init_raises_for_weights_mismatched_lengths(self):
+        """
+        Test that VarVsEff raises ValueError if weights have different lengths
+        than other arrays.
+        """
+        with self.assertRaises(ValueError):
+            VarVsEff(
+                x_var_sig=self.x_sig,
+                disc_sig=self.disc_sig,
+                weights_sig=self.disc_sig[:500],
+                disc_cut=0.5,
+            )
+        with self.assertRaises(ValueError):
+            VarVsEff(
+                x_var_sig=self.x_sig,
+                disc_sig=self.disc_sig,
+                x_var_bkg=self.x_bkg,
+                disc_bkg=self.disc_bkg,
+                weights_bkg=self.disc_bkg[:500],
+                disc_cut=0.5,
+            )
+
     def test_init_raises_for_no_cut_and_no_wp(self):
         """
         Test that VarVsEff raises ValueError if neither `working_point`
@@ -188,6 +210,72 @@ class VarVsEffTestCase(unittest.TestCase):
         self.assertEqual(len(sig_rej_err), obj.n_bins)
         self.assertEqual(len(bkg_rej), obj.n_bins)
         self.assertEqual(len(bkg_rej_err), obj.n_bins)
+
+    def test_efficiency_and_rejection_with_weights(self):
+        """
+        Test that we can retrieve the signal/background efficiency
+        and rejection without errors with weights.
+        """
+        obj = VarVsEff(
+            x_var_sig=np.array([0.1, 0.2, 0.8, 0.9]),
+            disc_sig=np.array([0.2, 0.8, 0.3, 0.7]),
+            weights_sig=np.array([1, 2, 3, 4]),
+            x_var_bkg=np.array([0.1, 0.2, 0.8, 0.9]),
+            disc_bkg=np.array([0.1, 0.9, 0.4, 0.6]),
+            weights_bkg=np.array([4, 3, 2, 1]),
+            bins=[0, 0.5, 1],
+            disc_cut=0.5,
+        )
+        # bin 1:
+        # sig_disc = [0.2, 0.8], weights = [1, 2] -> eff = 2/3, rej = 3/2
+        # bkg_disc = [0.1, 0.9], weights = [4, 3] -> eff = 3/7, rej = 7/3
+        # bin 2:
+        # sig_disc = [0.3, 0.7], weights = [3, 4] -> eff = 4/7, rej = 7/4
+        # bkg_disc = [0.4, 0.6], weights = [2, 1] -> eff = 1/3, rej = 3/1
+
+        sig_eff, sig_eff_err = obj.sig_eff
+        bkg_eff, bkg_eff_err = obj.bkg_eff
+        sig_rej, sig_rej_err = obj.sig_rej
+        bkg_rej, bkg_rej_err = obj.bkg_rej
+
+        np.testing.assert_almost_equal(sig_eff, [2 / 3, 4 / 7])
+        np.testing.assert_almost_equal(bkg_eff, [3 / 7, 1 / 3])
+        np.testing.assert_almost_equal(sig_rej, [3 / 2, 7 / 4])
+        np.testing.assert_almost_equal(bkg_rej, [7 / 3, 3 / 1])
+
+        # test errors
+        # bin 1, sig: sqrt(2^2)/3 = 2/3
+        # bin 2, sig: sqrt(4^2)/7 = 4/7
+        np.testing.assert_almost_equal(sig_eff_err, [2 / 3, 4 / 7])
+        # bin 1, bkg: sqrt(3^2)/7 = 3/7
+        # bin 2, bkg: sqrt(1^2)/3 = 1/3
+        np.testing.assert_almost_equal(bkg_eff_err, [3 / 7, 1 / 3])
+
+        # bin 1, sig: 3/2 * sqrt(2^2)/2 = 3/2
+        # bin 2, sig: 7/4 * sqrt(4^2)/4 = 7/4
+        np.testing.assert_almost_equal(sig_rej_err, [3 / 2, 7 / 4])
+        # bin 1, bkg: 7/3 * sqrt(3^2)/3 = 7/3
+        # bin 2, bkg: 3/1 * sqrt(1^2)/1 = 3/1
+        np.testing.assert_almost_equal(bkg_rej_err, [7 / 3, 3 / 1])
+
+    def test_bkg_eff_sig_err_with_weights(self):
+        """
+        Test the bkg_eff_sig_err property with weights.
+        """
+        obj = VarVsEff(
+            x_var_sig=np.array([0.1, 0.2, 0.8, 0.9]),
+            disc_sig=np.array([0.2, 0.8, 0.3, 0.7]),
+            weights_sig=np.array([1, 2, 3, 4]),
+            x_var_bkg=np.array([0.1, 0.2, 0.8, 0.9]),
+            disc_bkg=np.array([0.1, 0.9, 0.4, 0.6]),
+            weights_bkg=np.array([4, 3, 2, 1]),
+            bins=[0, 0.5, 1],
+            disc_cut=0.5,
+        )
+        # eff = bkg_eff, err = sig_eff_err
+        eff, err = obj.bkg_eff_sig_err
+        np.testing.assert_almost_equal(eff, [3 / 7, 1 / 3])
+        np.testing.assert_almost_equal(err, [2 / 3, 4 / 7])
 
     def test_inverse_cut(self):
         """Test the inverse_cut functionality in get()."""
